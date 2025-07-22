@@ -70,7 +70,7 @@ Après le lancement avec Docker Compose, les services sont accessibles aux adres
 ## Fichiers de configuration et exemples
 
 - **Exemple de fichier CSV pour l'import de contacts** :
-  - [exemple-contacts.csv](./contacts_import.csv)
+  - [contacts_import.csv](./contacts_import.csv)
   - Utilisez ce fichier pour tester l'import de contacts dans l'application.
   - Format attendu :
 

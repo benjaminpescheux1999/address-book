@@ -11,7 +11,6 @@ app.use(express.json()); // Middleware pour parser le JSON
 app.use(cors()); // Middleware pour autoriser les requêtes cross-origin
 
 // Connexion à MongoDB (par défaut sur le service docker mongo)
-console.log("process.env.MONGO_URI", process.env.MONGO_URI);
 mongoose.connect(process.env.MONGO_URI || 'mongodb://mongo:27017/addressbook', {});
 
 // Route principale pour la gestion des contacts

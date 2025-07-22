@@ -11,7 +11,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { Container, Typography, Box } from '@mui/material';
 
 // Récupération de l'URL de l'API depuis la variable d'environnement ou reconstruit dynamiquement avec l'IP de la machine
-const API_URL = (import.meta.env.VITE_API_URL_BACKEND || `http://${window.location.hostname}:5000/`) + 'contacts';
+const API_URL = import.meta.env.VITE_API_URL || '/contacts';
 const PAGE_SIZE = 5;
 
 
