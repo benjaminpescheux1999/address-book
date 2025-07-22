@@ -57,7 +57,7 @@ Après le lancement avec Docker Compose, les services sont accessibles aux adres
 
 > Pour accéder à MongoDB avec un client graphique (ex : MongoDB Compass), utilisez l’URL :
 > 
->     mongodb://localhost:27017/addressbook
+>     mongodb://{ip_machine}:27017/addressbook
 
 ## Fonctionnalités prévues
 
@@ -66,6 +66,24 @@ Après le lancement avec Docker Compose, les services sont accessibles aux adres
 - Import/export CSV
 - Interface utilisateur moderne avec React + MUI
 - API REST sécurisée
+
+## Fichiers de configuration et exemples
+
+- **Exemple de fichier CSV pour l'import de contacts** :
+  - [exemple-contacts.csv](./exemple-contacts.csv)
+  - Utilisez ce fichier pour tester l'import de contacts dans l'application.
+  - Format attendu :
+
+```csv
+name,email,phone
+Jean Dupont,jean.dupont@email.com,0601020304
+Alice Martin,alice.martin@email.com,0605060708
+```
+
+- **Fichiers de configuration d'environnement** :
+  - `backend/.env.example` : exemple de configuration pour le backend (Express)
+  - `frontend/.env.example` : exemple de configuration pour le frontend (Vite/React)
+  - Copiez ces fichiers en `.env` dans le dossier correspondant et adaptez les valeurs selon votre environnement (IP, ports, etc.)
 
 ## Auteur
 
