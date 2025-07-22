@@ -4,7 +4,7 @@
     "scripts": {
         "start": "vite",
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite --host 0.0.0.0"
     },
     "dependencies": {
         "react": "^18.0.0",

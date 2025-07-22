@@ -13,6 +13,9 @@ export interface ContactUtilsProps {
 
 export default function ContactUtils({ onImport, onExport, onDeleteAll }: ContactUtilsProps) {
     const fileInputRef = useRef<HTMLInputElement | null>(null);
+    // Récupération de l'URL de l'API depuis la variable d'environnement ou reconstruit dynamiquement avec l'IP de la machine
+    const API_URL = import.meta.env.VITE_API_URL_BACKEND || `http://${window.location.hostname}:5000`;
+    console.log("import.meta.env.VITE_API_URL_BACKEND", import.meta.env.VITE_API_URL_BACKEND);
 
     // Import CSV : envoie le fichier au backend et affiche le message de retour
     const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -20,7 +23,7 @@ export default function ContactUtils({ onImport, onExport, onDeleteAll }: Contac
         const file = e.target.files[0];
         const formData = new FormData();
         formData.append('file', file);
-        const res = await fetch('http://localhost:5000/contacts/import-csv', {
+        const res = await fetch(`${API_URL}/contacts/import-csv`, {
             method: 'POST',
             body: formData,
         });
@@ -31,13 +34,13 @@ export default function ContactUtils({ onImport, onExport, onDeleteAll }: Contac
     // Export CSV : ouvre le fichier généré par le backend
     const handleExport = () => {
         if (onExport) onExport();
-        window.open('http://localhost:5000/contacts/export-csv', '_blank');
+        window.open(`${API_URL}/contacts/export-csv`, '_blank');
     };
 
     // Suppression de tous les contacts avec confirmation
     const handleDeleteAll = async () => {
         if (!window.confirm('Voulez-vous vraiment supprimer tous les contacts ?')) return;
-        const res = await fetch('http://localhost:5000/contacts', { method: 'DELETE' });
+        const res = await fetch(`${API_URL}/contacts`, { method: 'DELETE' });
         const data = await res.json();
         if (onDeleteAll) onDeleteAll(data.message);
     };

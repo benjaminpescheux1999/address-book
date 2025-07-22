@@ -7,9 +7,11 @@ import ActionSnackbar from './components/ActionSnackbar';
 import ConfirmDialog from './components/ConfirmDialog';
 import PaginationLoader from './components/PaginationLoader';
 import ContactUtils from './components/ContactUtils';
+import CircularProgress from '@mui/material/CircularProgress';
 import { Container, Typography, Box } from '@mui/material';
 
-const API_URL = 'http://localhost:5000/contacts';
+// Récupération de l'URL de l'API depuis la variable d'environnement ou reconstruit dynamiquement avec l'IP de la machine
+const API_URL = (import.meta.env.VITE_API_URL_BACKEND || `http://${window.location.hostname}:5000/`) + 'contacts';
 const PAGE_SIZE = 5;
 
 
@@ -155,7 +157,13 @@ function App() {
                 <Typography variant="h6" gutterBottom>Contacts</Typography>
                 <Typography variant="subtitle1" color="text.secondary">({total})</Typography>
             </Box>
-            <ContactList contacts={contacts} onDelete={handleDeleteContact} onEdit={handleEditContact} />
+            {loading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+                    <CircularProgress />
+                </Box>
+            ) : (
+                <ContactList contacts={contacts} onDelete={handleDeleteContact} onEdit={handleEditContact} />
+            )}
             <PaginationLoader onLoadMore={loadMore} hasMore={hasMore} loading={loading} />
             <EditContactModal
                 open={modalOpen}

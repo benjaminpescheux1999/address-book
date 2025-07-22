@@ -4,3 +4,7 @@ mongo/
 # Ignorer les dépendances Node.js
 backend/node_modules/
 frontend/node_modules/ 
+
+# Ignorer les fichiers .env Backend et Frontend
+backend/.env
+frontend/.env

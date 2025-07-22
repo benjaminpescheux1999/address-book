@@ -51,9 +51,9 @@ docker-compose up --build
 
 Après le lancement avec Docker Compose, les services sont accessibles aux adresses suivantes :
 
-- **Frontend (React)** : http://localhost:3001
-- **Backend (API Express)** : http://localhost:5000
-- **MongoDB** : mongodb://localhost:27017 (accès local, ou via le conteneur `mongo`)
+- **Frontend (React)** : http://{ip_machine}:3001
+- **Backend (API Express)** : http://{ip_machine}:5000
+- **MongoDB** : mongodb://{ip_machine}:27017 (accès local, ou via le conteneur `mongo`)
 
 > Pour accéder à MongoDB avec un client graphique (ex : MongoDB Compass), utilisez l’URL :
 > 
