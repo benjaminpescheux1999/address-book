@@ -1,0 +1,6 @@
+# Ignorer tous les fichiers de la base mongo locale
+mongo/
+
+# Ignorer les dépendances Node.js
+backend/node_modules/
+frontend/node_modules/ 

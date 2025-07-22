@@ -6,16 +6,12 @@ import SearchBar from './components/SearchBar';
 import ActionSnackbar from './components/ActionSnackbar';
 import ConfirmDialog from './components/ConfirmDialog';
 import PaginationLoader from './components/PaginationLoader';
-import ImportExportCSV from './components/ImportExportCSV';
 import ContactUtils from './components/ContactUtils';
 import { Container, Typography, Box } from '@mui/material';
 
 const API_URL = 'http://localhost:5000/contacts';
 const PAGE_SIZE = 5;
 
-function normalize(str: string) {
-    return str.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
-}
 
 function App() {
     const [contacts, setContacts] = useState<Contact[]>([]);
