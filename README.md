@@ -22,7 +22,6 @@ Ce projet est une application de gestion de carnet d'adresses (Address Book) dé
 | **Frontend** | React, TypeScript, Material UI (MUI), Fetch API         |
 | **Base de données** | MongoDB (via Docker)                             |
 | **DevOps**   | Docker, Docker Compose                                 |
-| **Outils dev**| ts-node-dev, TypeScript, ESLint, Prettier              |
 
 ### Détails des bibliothèques principales
 - **Backend** :
@@ -47,6 +46,18 @@ Ce projet est une application de gestion de carnet d'adresses (Address Book) dé
 ```bash
 docker-compose up --build
 ```
+
+## Accès aux services (via Docker)
+
+Après le lancement avec Docker Compose, les services sont accessibles aux adresses suivantes :
+
+- **Frontend (React)** : http://localhost:3001
+- **Backend (API Express)** : http://localhost:5000
+- **MongoDB** : mongodb://localhost:27017 (accès local, ou via le conteneur `mongo`)
+
+> Pour accéder à MongoDB avec un client graphique (ex : MongoDB Compass), utilisez l’URL :
+> 
+>     mongodb://localhost:27017/addressbook
 
 ## Fonctionnalités prévues
 
