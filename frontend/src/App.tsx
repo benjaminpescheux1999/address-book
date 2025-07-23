@@ -6,6 +6,7 @@ import ActionSnackbar from './components/ActionSnackbar';
 import ConfirmDialog from './components/ConfirmDialog';
 import PaginationLoader from './components/PaginationLoader';
 import ContactUtils from './components/ContactUtils';
+import AlphabetNavigation from './components/AlphabetNavigation';
 import CircularProgress from '@mui/material/CircularProgress';
 import { Container, Typography, Box, Button, useTheme, useMediaQuery } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
@@ -32,6 +33,7 @@ function App() {
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [total, setTotal] = useState(0);
+    const [currentLetter, setCurrentLetter] = useState<string | undefined>(undefined);
 
     useEffect(() => {
         setContacts([]);
@@ -79,6 +81,128 @@ function App() {
         const nextPage = page + 1;
         setPage(nextPage);
         fetchContacts(nextPage);
+    };
+
+    const navigateToLetter = async (letter: string) => {
+        setCurrentLetter(letter);
+        setLoading(true);
+
+        // Vérifier d'abord si la lettre est déjà dans les contacts chargés
+        const sectioned = getSectionedContacts(contacts);
+        const letterSection = sectioned.find(([sectionLetter]) => sectionLetter === letter);
+
+        if (letterSection) {
+            // La lettre est déjà chargée, scroll direct
+            setLoading(false);
+            setTimeout(() => {
+                const letterElement = document.querySelector(`[data-letter="${letter}"]`);
+                if (letterElement) {
+                    letterElement.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            }, 100);
+            return;
+        }
+
+        // La lettre n'est pas encore chargée, charger les pages nécessaires
+        let allContacts = [...contacts]; // Garder les contacts existants
+        let currentPage = page;
+        let found = false;
+        let targetLetter = letter;
+        const maxPages = 50; // Augmenter la limite pour charger plus de contacts
+
+        while (!found && currentPage <= maxPages) {
+            const url = search
+                ? `${API_URL}/search?q=${encodeURIComponent(search)}&page=${currentPage}&limit=${PAGE_SIZE}`
+                : `${API_URL}?page=${currentPage}&limit=${PAGE_SIZE}`;
+
+            const res = await fetch(url);
+            const data = await res.json();
+
+            if (data.data.length === 0) break;
+
+            // Ajouter seulement les nouveaux contacts
+            const newContacts = data.data.filter((newContact: Contact) =>
+                !allContacts.some(existing => existing._id === newContact._id)
+            );
+
+            allContacts = [...allContacts, ...newContacts];
+
+            // Vérifier si on a trouvé la lettre demandée
+            const updatedSectioned = getSectionedContacts(allContacts);
+            const foundLetterSection = updatedSectioned.find(([sectionLetter]) => sectionLetter === targetLetter);
+
+            if (foundLetterSection) {
+                found = true;
+                break;
+            }
+
+            // Si on a chargé beaucoup de pages et qu'on n'a toujours pas trouvé la lettre,
+            // chercher la lettre la plus proche avant seulement à la fin
+            if (currentPage >= 40) { // Attendre plus longtemps avant de chercher une alternative
+                const availableLetters = updatedSectioned.map(([sectionLetter]) => sectionLetter);
+                const closestLetter = findClosestLetterBefore(targetLetter, availableLetters);
+
+                if (closestLetter) {
+                    targetLetter = closestLetter;
+                    const closestSection = updatedSectioned.find(([sectionLetter]) => sectionLetter === closestLetter);
+                    if (closestSection) {
+                        found = true;
+                        break;
+                    }
+                }
+            }
+
+            currentPage++;
+        }
+
+        // Mettre à jour l'état
+        setContacts(allContacts);
+        setPage(currentPage);
+        setHasMore((currentPage * PAGE_SIZE) < total);
+        setLoading(false);
+
+        // Mettre à jour la lettre courante avec la lettre trouvée
+        setCurrentLetter(targetLetter);
+
+        // Faire défiler vers la lettre (celle trouvée ou la plus proche)
+        setTimeout(() => {
+            const letterElement = document.querySelector(`[data-letter="${targetLetter}"]`);
+            if (letterElement) {
+                letterElement.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        }, 100);
+    };
+
+    // Fonction utilitaire pour sectionner les contacts (copiée de ContactList)
+    const getSectionedContacts = (contacts: Contact[]) => {
+        const sections: { [letter: string]: Contact[] } = {};
+        contacts.forEach((c) => {
+            const letter = c.name ? c.name[0].toUpperCase() : '#';
+            if (!sections[letter]) sections[letter] = [];
+            sections[letter].push(c);
+        });
+        return Object.entries(sections).sort(([a], [b]) => a.localeCompare(b));
+    };
+
+    // Fonction pour trouver la lettre la plus proche avant la lettre demandée
+    const findClosestLetterBefore = (targetLetter: string, availableLetters: string[]): string | null => {
+        // Filtrer les lettres qui sont avant la lettre cible
+        const lettersBefore = availableLetters.filter(letter => letter < targetLetter);
+
+        if (lettersBefore.length === 0) {
+            return null; // Aucune lettre avant trouvée
+        }
+
+        // Retourner la lettre la plus proche (la plus grande parmi celles qui sont avant)
+        return lettersBefore.reduce((closest, current) =>
+            current > closest ? current : closest
+        );
     };
 
     const handleAddContact = () => {
@@ -174,30 +298,55 @@ function App() {
     if (pendingAction === 'delete' && pendingContact) confirmMessage = `Voulez-vous vraiment supprimer ${pendingContact.name} ?`;
 
     return (
-        <Container maxWidth="md" sx={{ mt: 2, mb: 4, fontFamily: 'sans-serif' }}>
-            {/* Header avec actions */}
-            <Box sx={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                mb: 3,
-                flexDirection: { xs: 'column', sm: 'row' },
-                gap: 2
-            }}>
-                <Typography variant="h4" gutterBottom sx={{ mb: 0 }}>Carnet d'adresses</Typography>
-                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+        <Container maxWidth="md" sx={{ mt: 2, mb: 4, fontFamily: 'sans-serif', pl: { xs: 6, sm: 8 } }}>
+            {/* Header avec titre et actions */}
+            <Box sx={{ mb: 3 }}>
+                {/* Titre principal */}
+                <Typography
+                    variant="h4"
+                    sx={{
+                        mb: { xs: 2, md: 3 },
+                        textAlign: { xs: 'center', md: 'left' }
+                    }}
+                >
+                    Carnet d'adresses
+                </Typography>
+
+                {/* Actions organisées en deux lignes sur desktop */}
+                <Box sx={{
+                    display: 'flex',
+                    flexDirection: { xs: 'column', md: 'row' },
+                    gap: { xs: 2, md: 3 },
+                    alignItems: { xs: 'stretch', md: 'center' },
+                    justifyContent: { xs: 'stretch', md: 'space-between' }
+                }}>
+                    {/* Bouton Ajouter un contact */}
                     <Button
                         variant="contained"
                         startIcon={<AddIcon />}
                         onClick={handleAddContact}
-                        sx={{ minWidth: { xs: '100%', sm: 'auto' } }}
+                        sx={{
+                            minWidth: { xs: '100%', md: 'auto' },
+                            px: { xs: 2, md: 3 },
+                            py: { xs: 1.5, md: 1.2 },
+                            fontSize: { xs: '1rem', md: '0.9rem' }
+                        }}
                     >
-                        Ajouter un contact
+                        AJOUTER UN CONTACT
                     </Button>
-                    <ContactUtils
-                        onImport={(message) => { setContacts([]); setPage(1); setHasMore(true); fetchContacts(1, true); setSnackbar({ open: true, message, severity: 'success' }); }}
-                        onDeleteAll={(message) => { setContacts([]); setPage(1); setHasMore(true); fetchContacts(1, true); setSnackbar({ open: true, message, severity: 'success' }); }}
-                    />
+
+                    {/* Outils (Import/Export/Supprimer) */}
+                    <Box sx={{
+                        display: 'flex',
+                        gap: 1,
+                        flexWrap: 'wrap',
+                        justifyContent: { xs: 'center', md: 'flex-end' }
+                    }}>
+                        <ContactUtils
+                            onImport={(message) => { setContacts([]); setPage(1); setHasMore(true); fetchContacts(1, true); setSnackbar({ open: true, message, severity: 'success' }); }}
+                            onDeleteAll={(message) => { setContacts([]); setPage(1); setHasMore(true); fetchContacts(1, true); setSnackbar({ open: true, message, severity: 'success' }); }}
+                        />
+                    </Box>
                 </Box>
             </Box>
 
@@ -218,6 +367,12 @@ function App() {
             ) : (
                 <ContactList contacts={contacts} onDelete={handleDeleteContact} onEdit={handleEditContact} />
             )}
+
+            {/* Navigation alphabétique fixe */}
+            <AlphabetNavigation
+                onLetterClick={navigateToLetter}
+                currentLetter={currentLetter}
+            />
 
             {/* Pagination */}
             {contacts.length > 0 && (

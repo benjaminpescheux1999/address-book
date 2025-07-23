@@ -47,6 +47,59 @@ router.get('/', async (req: Request, res: Response) => {
     }
 });
 
+// Initialisation des contacts existants (appelée une seule fois au démarrage)
+router.post('/initialize', async (_req: Request, res: Response) => {
+    try {
+        // Récupérer tous les contacts sans nameNormalized ou emailNormalized
+        const contactsToUpdate = await Contact.find({
+            $or: [
+                { nameNormalized: { $exists: false } },
+                { emailNormalized: { $exists: false } }
+            ]
+        });
+
+        if (contactsToUpdate.length === 0) {
+            return res.json({
+                message: 'Tous les contacts sont déjà initialisés.',
+                updated: 0
+            });
+        }
+
+        console.log(`Initialisation de ${contactsToUpdate.length} contacts existants...`);
+
+        // Mettre à jour chaque contact
+        let updatedCount = 0;
+        for (const contact of contactsToUpdate) {
+            let updated = false;
+
+            if (contact.name && !contact.nameNormalized) {
+                contact.nameNormalized = deburr(contact.name).toLowerCase();
+                updated = true;
+            }
+
+            if (contact.email && !contact.emailNormalized) {
+                contact.emailNormalized = deburr(contact.email).toLowerCase();
+                updated = true;
+            }
+
+            if (updated) {
+                await contact.save();
+                updatedCount++;
+            }
+        }
+
+        console.log(`Initialisation terminée: ${updatedCount} contacts mis à jour`);
+
+        res.json({
+            message: `Initialisation terminée. ${updatedCount} contacts mis à jour.`,
+            updated: updatedCount
+        });
+    } catch (error) {
+        console.error('Erreur lors de l\'initialisation des contacts:', error);
+        res.status(500).json({ error: 'Erreur serveur lors de l\'initialisation des contacts' });
+    }
+});
+
 // Recherche avancée paginée sur nom, email ou téléphone (insensible aux accents/majuscules)
 router.get('/search', async (req: Request, res: Response) => {
     try {
