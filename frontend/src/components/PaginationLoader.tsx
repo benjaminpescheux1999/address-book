@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { Box, CircularProgress, Typography } from '@mui/material';
 
 export interface PaginationLoaderProps {
     onLoadMore: () => void;
@@ -26,8 +27,30 @@ export default function PaginationLoader({ onLoadMore, hasMore, loading }: Pagin
     }, [hasMore, loading, onLoadMore]);
 
     return (
-        <div ref={loaderRef} style={{ height: 32, textAlign: 'center' }}>
-            {loading && <span>Chargement...</span>}
-        </div>
+        <Box
+            ref={loaderRef}
+            sx={{
+                height: 80,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                py: 2
+            }}
+        >
+            {loading && (
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                    <CircularProgress size={24} />
+                    <Typography variant="body2" color="text.secondary">
+                        Chargement de nouveaux contacts...
+                    </Typography>
+                </Box>
+            )}
+            {!hasMore && !loading && (
+                <Typography variant="body2" color="text.secondary">
+                    Tous les contacts ont été chargés
+                </Typography>
+            )}
+        </Box>
     );
 } 

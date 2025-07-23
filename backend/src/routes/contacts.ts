@@ -105,7 +105,8 @@ router.get('/export-csv', async (_req: Request, res: Response) => {
         contacts.map((c: any) => ({
             name: c.name,
             email: c.email,
-            phone: c.phone
+            phone: c.phone,
+            avatar: c.avatar || ''
         })),
         { delimiter: ';' }
     );
@@ -126,7 +127,12 @@ router.put('/:id', async (req: Request, res: Response) => {
     }
     const updated = await Contact.findByIdAndUpdate(
         req.params.id,
-        { name: req.body.name, email: req.body.email, phone: req.body.phone },
+        {
+            name: req.body.name,
+            email: req.body.email,
+            phone: req.body.phone,
+            avatar: req.body.avatar || null
+        },
         { new: true }
     );
     res.json(updated);

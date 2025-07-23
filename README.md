@@ -1,4 +1,6 @@
-# Address Book App
+🇫🇷 # Address Book App
+
+[🇫🇷 Français](README.md) | [🇬🇧 English](README_EN.md)
 
 Ce projet est une application de gestion de carnet d'adresses (Address Book) développée avec la stack MERN (MongoDB, Express, React, Node.js) et TypeScript.
 
@@ -9,6 +11,7 @@ Ce projet est une application de gestion de carnet d'adresses (Address Book) dé
 │
 ├── backend        # API Node.js/Express + TypeScript
 ├── frontend       # Application React + TypeScript
+├── nginx          # Configuration du reverse proxy Nginx
 ├── mongo          # Utilisé par docker-compose pour MongoDB
 ├── docker-compose.yml
 └── README.md
@@ -21,7 +24,7 @@ Ce projet est une application de gestion de carnet d'adresses (Address Book) dé
 | **Backend**  | Node.js, Express, TypeScript, Mongoose, Multer, PapaParse, csv-parser, lodash.deburr |
 | **Frontend** | React, TypeScript, Material UI (MUI), Fetch API         |
 | **Base de données** | MongoDB (via Docker)                             |
-| **DevOps**   | Docker, Docker Compose                                 |
+| **DevOps**   | Docker, Docker Compose, Nginx (reverse proxy)           |
 
 ### Détails des bibliothèques principales
 - **Backend** :
@@ -37,11 +40,11 @@ Ce projet est une application de gestion de carnet d'adresses (Address Book) dé
 
 ## Lancement rapide
 
-> **Aucune installation de dépendances avec `npm install` n'est nécessaire !**
+> **Aucune installation de dépendances avec `npm install` n'est nécessaire !**
 > Tout est automatisé via Docker et Docker Compose.
 
 1. Cloner le dépôt
-2. Lancer l'application avec Docker Compose :
+2. Lancer l'application avec Docker Compose :
 
 ```bash
 docker-compose up --build
@@ -49,13 +52,20 @@ docker-compose up --build
 
 ## Accès aux services (via Docker)
 
-Après le lancement avec Docker Compose, les services sont accessibles aux adresses suivantes :
+Après le lancement avec Docker Compose, les services sont accessibles aux adresses suivantes :
 
-- **Frontend (React)** : http://{ip_machine}:3001
-- **Backend (API Express)** : http://{ip_machine}:5000
+- **Frontend (React) + API** : http://{ip_machine}:3001
+  - **Nginx sert automatiquement le frontend** et fait le proxy vers le backend
+  - **Aucune configuration d'IP ou de domaine nécessaire** : tout fonctionne automatiquement
+- **Backend (API Express) - accès direct** : http://{ip_machine}:5000
 - **MongoDB** : mongodb://{ip_machine}:27017 (accès local, ou via le conteneur `mongo`)
 
-> Pour accéder à MongoDB avec un client graphique (ex : MongoDB Compass), utilisez l’URL :
+> **Avantage du reverse proxy Nginx** :
+> - Le frontend et l'API communiquent sans problème de CORS
+> - Aucune configuration d'IP ou de domaine n'est requise
+> - Fonctionne sur n'importe quelle machine (VM, serveur, local) sans modification
+
+> Pour accéder à MongoDB avec un client graphique (ex : MongoDB Compass), utilisez l'URL :
 > 
 >     mongodb://{ip_machine}:27017/addressbook
 
@@ -83,7 +93,9 @@ Alice Martin,alice.martin@email.com,0605060708
 - **Fichiers de configuration d'environnement** :
   - `backend/.env.example` : exemple de configuration pour le backend (Express)
   - `frontend/.env.example` : exemple de configuration pour le frontend (Vite/React)
-  - Copiez ces fichiers en `.env` dans le dossier correspondant et adaptez les valeurs selon votre environnement (IP, ports, etc.)
+  - **Configuration par défaut** : avec le reverse proxy Nginx, aucune configuration d'IP ou de domaine n'est nécessaire
+  - **Variable d'environnement frontend** : `VITE_API_URL=/contacts` (chemin relatif, pas d'IP)
+  - Copiez ces fichiers en `.env` dans le dossier correspondant et adaptez les valeurs selon votre environnement si nécessaire
 
 ## Auteur
 

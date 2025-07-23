@@ -18,7 +18,6 @@ services:
 
   frontend:
     build: ./frontend
-    # Pas besoin d'exposer de port ici, c'est nginx qui sert le front
     depends_on:
       - backend
 

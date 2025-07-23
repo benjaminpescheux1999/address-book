@@ -1,5 +1,5 @@
 import React from 'react';
-import { List, ListItem, ListItemText, Paper, IconButton, Typography, Box } from '@mui/material';
+import { List, ListItem, ListItemText, ListItemAvatar, Paper, IconButton, Typography, Box, Avatar } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 
@@ -8,12 +8,22 @@ export interface Contact {
   name: string;
   email: string;
   phone: string;
+  avatar?: string;
 }
 
 export interface ContactListProps {
   contacts: Contact[];
   onEdit?: (contact: Contact) => void;
   onDelete?: (contact: Contact) => void;
+}
+
+function getInitials(name: string) {
+  return name
+    .split(' ')
+    .map(word => word.charAt(0))
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
 }
 
 function getSectionedContacts(contacts: Contact[]) {
@@ -52,6 +62,14 @@ export default function ContactList({ contacts, onEdit, onDelete }: ContactListP
                   </>
                 }
               >
+                <ListItemAvatar>
+                  <Avatar
+                    src={c.avatar || undefined}
+                    sx={{ width: 48, height: 48 }}
+                  >
+                    {getInitials(c.name)}
+                  </Avatar>
+                </ListItemAvatar>
                 <ListItemText
                   primary={c.name}
                   secondary={
