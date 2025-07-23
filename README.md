@@ -72,10 +72,13 @@ Après le lancement avec Docker Compose, les services sont accessibles aux adres
 ## Fonctionnalités prévues
 
 - Ajouter, modifier, supprimer des contacts
+- **Gestion des avatars** : upload d'images avec prévisualisation et initiales par défaut
 - Rechercher des contacts
 - Import/export CSV
 - Interface utilisateur moderne avec React + MUI
 - API REST sécurisée
+- **Pagination infinie** avec scroll automatique
+- **Interface responsive** adaptée mobile/desktop
 
 ## Fichiers de configuration et exemples
 
