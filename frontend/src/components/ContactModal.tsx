@@ -10,7 +10,7 @@ import {
     useTheme,
     useMediaQuery
 } from '@mui/material';
-import { Contact } from './ContactList';
+import { Contact, ContactFormData, ContactFormHandler, ModalMode } from '../types';
 import ValidationMessage from './ValidationMessage';
 import AvatarUpload from './AvatarUpload';
 
@@ -18,24 +18,25 @@ export interface ContactModalProps {
     open: boolean;
     contact?: Contact | null; // null = création, Contact = modification
     onClose: () => void;
-    onSave: (contact: Contact | Omit<Contact, '_id'>) => void;
-    mode: 'create' | 'edit';
+    onSave: ContactFormHandler;
+    mode: ModalMode;
 }
 
-function validateEmail(email: string) {
+function validateEmail(email: string): boolean {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-function validatePhone(phone: string) {
+function validatePhone(phone: string): boolean {
     return /^\+?\d{7,15}$/.test(phone.replace(/\s/g, ''));
 }
 
 export default function ContactModal({ open, contact, onClose, onSave, mode }: ContactModalProps) {
     const theme = useTheme();
+    // Detection de la taille de l'écran mobile
     const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
-    const [form, setForm] = useState({ name: '', email: '', phone: '', avatar: '' });
-    const [error, setError] = useState('');
+    const [form, setForm] = useState<ContactFormData>({ name: '', email: '', phone: '', avatar: '' });
+    const [error, setError] = useState<string>('');
 
     useEffect(() => {
         if (contact) {
@@ -51,15 +52,16 @@ export default function ContactModal({ open, contact, onClose, onSave, mode }: C
         setError('');
     }, [contact, open]);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
         setForm({ ...form, [e.target.name]: e.target.value });
     };
 
-    const handleAvatarChange = (avatar: string | null) => {
+    const handleAvatarChange = (avatar: string | null): void => {
         setForm({ ...form, avatar: avatar || '' });
     };
 
-    const handleSubmit = () => {
+    // Controle des champs
+    const handleSubmit = (): void => {
         if (!form.name || !form.email || !form.phone) {
             setError('Tous les champs sont obligatoires.');
             return;
@@ -83,11 +85,13 @@ export default function ContactModal({ open, contact, onClose, onSave, mode }: C
         onClose();
     };
 
-    const getTitle = () => {
+    // Titre du modal
+    const getTitle = (): string => {
         return mode === 'create' ? 'Ajouter un contact' : 'Modifier le contact';
     };
 
-    const getSubmitButtonText = () => {
+    // Texte du bouton d'envoi
+    const getSubmitButtonText = (): string => {
         return mode === 'create' ? 'Ajouter' : 'Enregistrer';
     };
 
@@ -103,7 +107,6 @@ export default function ContactModal({ open, contact, onClose, onSave, mode }: C
             <DialogContent>
                 <ValidationMessage message={error} />
 
-                {/* Avatar Upload */}
                 <AvatarUpload
                     currentAvatar={form.avatar}
                     onAvatarChange={handleAvatarChange}

@@ -2,20 +2,7 @@ import React from 'react';
 import { List, ListItem, ListItemText, ListItemAvatar, Paper, IconButton, Typography, Box, Avatar, useTheme, useMediaQuery } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-
-export interface Contact {
-  _id?: string;
-  name: string;
-  email: string;
-  phone: string;
-  avatar?: string;
-}
-
-export interface ContactListProps {
-  contacts: Contact[];
-  onEdit?: (contact: Contact) => void;
-  onDelete?: (contact: Contact) => void;
-}
+import { Contact, ContactListProps } from '../types';
 
 function getInitials(name: string) {
   return name
@@ -26,6 +13,7 @@ function getInitials(name: string) {
     .slice(0, 2);
 }
 
+// fonction pour sectionner les contacts
 function getSectionedContacts(contacts: Contact[]) {
   const sections: { [letter: string]: Contact[] } = {};
   contacts.forEach((c) => {
@@ -36,6 +24,7 @@ function getSectionedContacts(contacts: Contact[]) {
   return Object.entries(sections).sort(([a], [b]) => a.localeCompare(b));
 }
 
+// composant pour afficher la liste des contacts
 export default function ContactList({ contacts, onEdit, onDelete }: ContactListProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));

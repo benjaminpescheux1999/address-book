@@ -1,10 +1,11 @@
 import React from 'react';
 import { Snackbar, Alert } from '@mui/material';
+import { SnackbarSeverity } from '../types';
 
 export interface ActionSnackbarProps {
     open: boolean;
     message: string;
-    severity?: 'success' | 'error' | 'info' | 'warning';
+    severity?: SnackbarSeverity;
     onClose: () => void;
 }
 

@@ -1,9 +1,10 @@
 import React from 'react';
 import { Alert } from '@mui/material';
+import { SnackbarSeverity } from '../types';
 
 export interface ValidationMessageProps {
     message: string;
-    severity?: 'error' | 'success' | 'info' | 'warning';
+    severity?: SnackbarSeverity;
 }
 
 export default function ValidationMessage({ message, severity = 'error' }: ValidationMessageProps) {

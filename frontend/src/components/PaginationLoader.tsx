@@ -10,10 +10,11 @@ export interface PaginationLoaderProps {
 export default function PaginationLoader({ onLoadMore, hasMore, loading }: PaginationLoaderProps) {
     const loaderRef = useRef<HTMLDivElement | null>(null);
 
+    // observer pour charger les contacts au défilement
     useEffect(() => {
         if (!hasMore || loading) return;
         const observer = new IntersectionObserver(
-            (entries) => {
+            (entries: IntersectionObserverEntry[]) => {
                 if (entries[0].isIntersecting) {
                     onLoadMore();
                 }

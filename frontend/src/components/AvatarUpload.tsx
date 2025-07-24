@@ -23,15 +23,14 @@ export default function AvatarUpload({ currentAvatar, onAvatarChange, contactNam
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
     const [previewAvatar, setPreviewAvatar] = useState<string | null>(null);
-    const [hasRemovedAvatar, setHasRemovedAvatar] = useState(false);
+    const [hasRemovedAvatar, setHasRemovedAvatar] = useState<boolean>(false);
 
-    // Réinitialiser l'état quand currentAvatar change
     useEffect(() => {
         setPreviewAvatar(currentAvatar || null);
         setHasRemovedAvatar(false);
     }, [currentAvatar]);
 
-    const getInitials = (name: string) => {
+    const getInitials = (name: string): string => {
         return name
             .split(' ')
             .map(word => word.charAt(0))
@@ -40,24 +39,25 @@ export default function AvatarUpload({ currentAvatar, onAvatarChange, contactNam
             .slice(0, 2);
     };
 
-    const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>): void => {
         const file = event.target.files?.[0];
         if (!file) return;
 
-        // Validation du type de fichier
+        // Vérification du type de fichier
         if (!file.type.startsWith('image/')) {
             alert('Veuillez sélectionner une image valide.');
             return;
         }
 
-        // Validation de la taille (max 2MB)
+        // limite de taille de l'image
         if (file.size > 2 * 1024 * 1024) {
             alert('L\'image doit faire moins de 2MB.');
             return;
         }
 
+        // lecture de l'image
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = (e: ProgressEvent<FileReader>) => {
             const result = e.target?.result as string;
             setPreviewAvatar(result);
             setHasRemovedAvatar(false);
@@ -66,7 +66,7 @@ export default function AvatarUpload({ currentAvatar, onAvatarChange, contactNam
         reader.readAsDataURL(file);
     };
 
-    const handleRemoveAvatar = () => {
+    const handleRemoveAvatar = (): void => {
         setPreviewAvatar(null);
         setHasRemovedAvatar(true);
         onAvatarChange(null);
@@ -75,7 +75,6 @@ export default function AvatarUpload({ currentAvatar, onAvatarChange, contactNam
         }
     };
 
-    // Détermine l'avatar à afficher
     const displayAvatar = hasRemovedAvatar ? null : (previewAvatar || currentAvatar);
 
     return (

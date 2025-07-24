@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import ContactList, { Contact } from './components/ContactList';
+import ContactList from './components/ContactList';
 import ContactModal from './components/ContactModal';
 import SearchBar from './components/SearchBar';
 import ActionSnackbar from './components/ActionSnackbar';
@@ -10,10 +10,23 @@ import AlphabetNavigation from './components/AlphabetNavigation';
 import CircularProgress from '@mui/material/CircularProgress';
 import { Container, Typography, Box, Button, useTheme, useMediaQuery } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import {
+    Contact,
+    ContactsResponse,
+    SearchResponse,
+    SnackbarState,
+    PendingAction,
+    LetterClickHandler,
+    ContactActionHandler,
+    ContactFormHandler,
+    ContactSection,
+    SectionedContacts,
+    PAGE_SIZE,
+    MAX_PAGES
+} from './types';
 
 // Récupération de l'URL de l'API depuis la variable d'environnement ou reconstruit dynamiquement avec l'IP de la machine
 const API_URL = import.meta.env.VITE_API_URL || '/contacts';
-const PAGE_SIZE = 5;
 
 
 function App() {
@@ -26,9 +39,9 @@ function App() {
     const [contactModalMode, setContactModalMode] = useState<'create' | 'edit'>('create');
     const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
     const [search, setSearch] = useState('');
-    const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity?: 'success' | 'error' | 'info' | 'warning' }>({ open: false, message: '' });
+    const [snackbar, setSnackbar] = useState<SnackbarState>({ open: false, message: '' });
     const [confirmOpen, setConfirmOpen] = useState(false);
-    const [pendingAction, setPendingAction] = useState<'add' | 'edit' | 'delete' | null>(null);
+    const [pendingAction, setPendingAction] = useState<PendingAction>(null);
     const [pendingContact, setPendingContact] = useState<Contact | Omit<Contact, '_id'> | null>(null);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
@@ -56,7 +69,7 @@ function App() {
             ? `${API_URL}/search?q=${encodeURIComponent(search)}&page=${pageToLoad}&limit=${PAGE_SIZE}`
             : `${API_URL}?page=${pageToLoad}&limit=${PAGE_SIZE}`;
         const res = await fetch(url);
-        const data = await res.json();
+        const data: ContactsResponse | SearchResponse = await res.json();
 
         setContacts(prev => {
             const newContacts = reset ? data.data : [...prev, ...data.data];
@@ -76,6 +89,7 @@ function App() {
         setLoading(false);
     }, [search]);
 
+    // Fonction pour charger les contacts suivants
     const loadMore = () => {
         if (!hasMore || loading) return;
         const nextPage = page + 1;
@@ -83,11 +97,12 @@ function App() {
         fetchContacts(nextPage);
     };
 
-    const navigateToLetter = async (letter: string) => {
+    // Fonction pour naviguer vers une lettre spécifique
+    const navigateToLetter: LetterClickHandler = async (letter: string) => {
         setCurrentLetter(letter);
         setLoading(true);
 
-        // Vérifier d'abord si la lettre est déjà dans les contacts chargés
+        // Vérifier si la lettre est déjà chargée
         const sectioned = getSectionedContacts(contacts);
         const letterSection = sectioned.find(([sectionLetter]) => sectionLetter === letter);
 
@@ -107,12 +122,13 @@ function App() {
         }
 
         // La lettre n'est pas encore chargée, charger les pages nécessaires
-        let allContacts = [...contacts]; // Garder les contacts existants
+        let allContacts = [...contacts];
         let currentPage = page;
         let found = false;
         let targetLetter = letter;
-        const maxPages = 50; // Augmenter la limite pour charger plus de contacts
+        const maxPages = 50; // limite de pages à charger
 
+        // Boucle pour charger les pages jusqu'à trouver la lettre ou atteindre la limite
         while (!found && currentPage <= maxPages) {
             const url = search
                 ? `${API_URL}/search?q=${encodeURIComponent(search)}&page=${currentPage}&limit=${PAGE_SIZE}`
@@ -141,7 +157,7 @@ function App() {
 
             // Si on a chargé beaucoup de pages et qu'on n'a toujours pas trouvé la lettre,
             // chercher la lettre la plus proche avant seulement à la fin
-            if (currentPage >= 40) { // Attendre plus longtemps avant de chercher une alternative
+            if (currentPage >= 40) {
                 const availableLetters = updatedSectioned.map(([sectionLetter]) => sectionLetter);
                 const closestLetter = findClosestLetterBefore(targetLetter, availableLetters);
 
@@ -158,16 +174,16 @@ function App() {
             currentPage++;
         }
 
-        // Mettre à jour l'état
+        // Mettre à jour l'état des contacts
         setContacts(allContacts);
         setPage(currentPage);
         setHasMore((currentPage * PAGE_SIZE) < total);
         setLoading(false);
 
-        // Mettre à jour la lettre courante avec la lettre trouvée
+        // Mettre à jour la lettre courante
         setCurrentLetter(targetLetter);
 
-        // Faire défiler vers la lettre (celle trouvée ou la plus proche)
+        // Faire défiler vers la lettre (celle trouvée ou la plus proche si non trouvée)
         setTimeout(() => {
             const letterElement = document.querySelector(`[data-letter="${targetLetter}"]`);
             if (letterElement) {
@@ -179,9 +195,9 @@ function App() {
         }, 100);
     };
 
-    // Fonction utilitaire pour sectionner les contacts (copiée de ContactList)
-    const getSectionedContacts = (contacts: Contact[]) => {
-        const sections: { [letter: string]: Contact[] } = {};
+    // Fonction pour pointer les contacts par lettre
+    const getSectionedContacts = (contacts: Contact[]): ContactSection[] => {
+        const sections: SectionedContacts = {};
         contacts.forEach((c) => {
             const letter = c.name ? c.name[0].toUpperCase() : '#';
             if (!sections[letter]) sections[letter] = [];
@@ -205,24 +221,28 @@ function App() {
         );
     };
 
+    // Fonction pour ajouter un contact
     const handleAddContact = () => {
         setContactModalMode('create');
         setSelectedContact(null);
         setContactModalOpen(true);
     };
 
-    const handleEditContact = (contact: Contact) => {
+    // Fonction pour modifier un contact
+    const handleEditContact: ContactActionHandler = (contact: Contact) => {
         setContactModalMode('edit');
         setSelectedContact(contact);
         setContactModalOpen(true);
     };
 
-    const handleDeleteContact = (contact: Contact) => {
+    // Fonction pour supprimer un contact
+    const handleDeleteContact: ContactActionHandler = (contact: Contact) => {
         setPendingAction('delete');
         setPendingContact(contact);
         setConfirmOpen(true);
     };
 
+    // Fonction pour enregistrer un contact
     const handleSaveContact = (contact: Contact | Omit<Contact, '_id'>) => {
         if (contactModalMode === 'create') {
             setPendingAction('add');
@@ -235,6 +255,7 @@ function App() {
         }
     };
 
+    // Fonction pour rafraîchir la liste des contacts
     const refreshContacts = () => {
         setContacts([]);
         setPage(1);
@@ -299,9 +320,7 @@ function App() {
 
     return (
         <Container maxWidth="md" sx={{ mt: 2, mb: 4, fontFamily: 'sans-serif', pl: { xs: 6, sm: 8 } }}>
-            {/* Header avec titre et actions */}
             <Box sx={{ mb: 3 }}>
-                {/* Titre principal */}
                 <Typography
                     variant="h4"
                     sx={{
@@ -312,7 +331,6 @@ function App() {
                     Carnet d'adresses
                 </Typography>
 
-                {/* Actions organisées en deux lignes sur desktop */}
                 <Box sx={{
                     display: 'flex',
                     flexDirection: { xs: 'column', md: 'row' },
@@ -320,7 +338,6 @@ function App() {
                     alignItems: { xs: 'stretch', md: 'center' },
                     justifyContent: { xs: 'stretch', md: 'space-between' }
                 }}>
-                    {/* Bouton Ajouter un contact */}
                     <Button
                         variant="contained"
                         startIcon={<AddIcon />}
@@ -335,7 +352,6 @@ function App() {
                         AJOUTER UN CONTACT
                     </Button>
 
-                    {/* Outils (Import/Export/Supprimer) */}
                     <Box sx={{
                         display: 'flex',
                         gap: 1,
@@ -353,7 +369,6 @@ function App() {
             {/* Barre de recherche */}
             <SearchBar value={search} onChange={setSearch} />
 
-            {/* En-tête de la liste */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, mt: 3 }}>
                 <Typography variant="h6" gutterBottom sx={{ mb: 0 }}>Contacts</Typography>
                 <Typography variant="subtitle1" color="text.secondary">({total})</Typography>
@@ -368,7 +383,7 @@ function App() {
                 <ContactList contacts={contacts} onDelete={handleDeleteContact} onEdit={handleEditContact} />
             )}
 
-            {/* Navigation alphabétique fixe */}
+            {/* Navigation alphabétique */}
             <AlphabetNavigation
                 onLetterClick={navigateToLetter}
                 currentLetter={currentLetter}
@@ -379,7 +394,6 @@ function App() {
                 <PaginationLoader onLoadMore={loadMore} hasMore={hasMore} loading={loading && page > 1} />
             )}
 
-            {/* Espace en bas de la liste */}
             <Box sx={{ mb: 8 }} />
 
             {/* Modals */}

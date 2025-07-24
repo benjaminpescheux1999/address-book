@@ -1,10 +1,10 @@
-# Ignorer tous les fichiers de la base mongo locale
+# Ignorer Les données mongo
 mongo/
 
-# Ignorer les dépendances Node.js
+# Ignorer les dépendances
 backend/node_modules/
 frontend/node_modules/ 
 
-# Ignorer les fichiers .env Backend et Frontend
+# Ignorer les fichiers .env
 backend/.env
 frontend/.env

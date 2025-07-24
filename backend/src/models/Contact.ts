@@ -4,26 +4,26 @@ import deburr from 'lodash.deburr';
 
 export const ContactSchema = new mongoose.Schema({
     name: String,
-    nameNormalized: String, // Champ normalisé pour le tri alphabétique
+    nameNormalized: String, // Champ normalisé pour le tri alphabétique (sans accents)
     email: String,
-    emailNormalized: String, // Champ normalisé pour l'unicité des emails
+    emailNormalized: String, // Champ normalisé pour l'unicité des emails (sans accents)
     phone: String,
-    avatar: String // Stockage de l'image en base64
+    avatar: String // base64 de l'image
 });
 
-// Index textuel pour la recherche avec gestion des accents et de la casse
+// Permet la recherche avec gestion des accents et de la casse
 ContactSchema.index({ name: 'text', email: 'text', phone: 'text' });
 
-// Index simple pour le tri alphabétique normalisé
+// Permet le tri alphabétique normalisé
 ContactSchema.index({ nameNormalized: 1 });
 
-// Index unique pour l'email normalisé
+// Permet l'unicité des emails normalisés
 ContactSchema.index({ emailNormalized: 1 }, { unique: true });
 
-// Index unique pour le téléphone
+// Permet l'unicité des téléphones
 ContactSchema.index({ phone: 1 }, { unique: true });
 
-// Middleware pour automatiquement normaliser le nom et l'email lors de la sauvegarde
+// Gestion des accents lors de la sauvegarde
 ContactSchema.pre('save', function (this: any, next: any) {
     if (this.name) {
         this.nameNormalized = deburr(this.name).toLowerCase();
@@ -34,7 +34,7 @@ ContactSchema.pre('save', function (this: any, next: any) {
     next();
 });
 
-// Middleware pour la mise à jour
+// Mettre à jour un contacts avec gestion des accents 
 ContactSchema.pre('findOneAndUpdate', function (this: any, next: any) {
     const update = this.getUpdate() as any;
     if (update && update.name) {

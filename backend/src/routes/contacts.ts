@@ -5,100 +5,73 @@ import csvParser from 'csv-parser';
 import Papa from 'papaparse';
 import multer from 'multer';
 import stream from 'stream';
+import {
+    IContact,
+    ICreateContact,
+    IUpdateContact,
+    IPaginatedResponse,
+    IPaginationParams,
+    ISearchParams,
+    IImportResponse,
+    IDeleteResponse,
+    ICSVRow,
+    IValidatedContact,
+    IApiError,
+    IExistingContact,
+    ValidationFunction,
+    IValidationResult,
+    IApiResponse,
+    IFileInfo,
+    IDatabaseResult
+} from '../types';
 
 const router = Router();
 const upload = multer();
 
-// Validation d'email au format standard
-function validateEmail(email: string) {
+// Vérification d'email au format standard
+const validateEmail: ValidationFunction = (email: string): boolean => {
     return /^[^\s@]+@[^ 0-\s@]+\.[^\s@]+$/.test(email);
-}
-// Validation de numéro de téléphone international ou national (7 à 15 chiffres)
-function validatePhone(phone: string) {
-    return /^\+?\d{7,15}$/.test((phone || '').replace(/\s/g, ''));
-}
+};
 
-// Récupère les contacts paginés et triés par nom (ordre alphabétique, insensible aux accents)
+// Vérification de numéro de téléphone français
+const validatePhone: ValidationFunction = (phone: string): boolean => {
+    const cleanPhone = (phone || '').replace(/\s/g, '');
+    const frenchPhoneRegex = /^(\+33|0)[1-9](\d{8})$/;
+    return frenchPhoneRegex.test(cleanPhone);
+};
+
+// Récupère les contacts paginés et triés par nom (ordre alphabétique)
 router.get('/', async (req: Request, res: Response) => {
     try {
-        const page = parseInt(String(req.query.page || '1'), 10);
-        const limit = parseInt(String(req.query.limit || '5'), 10);
-        const skip = (page - 1) * limit;
+        const page: number = parseInt(String(req.query.page || '1'), 10);
+        const limit: number = parseInt(String(req.query.limit || '5'), 10);
+        const skip: number = (page - 1) * limit;
 
-        // Requête optimisée : pagination et tri directement en MongoDB
-        const [contacts, total] = await Promise.all([
+        const [contacts, total]: [IContact[], number] = await Promise.all([
             Contact.find()
-                .sort({ nameNormalized: 1 }) // Tri alphabétique par nom normalisé
-                .skip(skip) // Pagination
+                .sort({ nameNormalized: 1 }) // Tri alphabétique par nom (ignore les accents)
+                .skip(skip) // Saut de page
                 .limit(limit) // Limite de contacts par page
-                .lean(), // Optimisation : retourne des objets JavaScript simples
-            Contact.countDocuments() // Compte total pour la pagination
+                .lean(), // Retourne des objets JavaScript simples
+            Contact.countDocuments() // Retourne le total pour la pagination 
         ]);
 
-        res.json({
+        const response: IPaginatedResponse<IContact> = {
             data: contacts,
             total,
             page,
             limit
-        });
+        };
+
+        res.json(response);
     } catch (error) {
         console.error('Erreur lors de la récupération des contacts:', error);
-        res.status(500).json({ error: 'Erreur serveur lors de la récupération des contacts' });
+        const errorResponse: IApiError = { error: 'Erreur serveur lors de la récupération des contacts' };
+        res.status(500).json(errorResponse);
     }
 });
 
-// Initialisation des contacts existants (appelée une seule fois au démarrage)
-router.post('/initialize', async (_req: Request, res: Response) => {
-    try {
-        // Récupérer tous les contacts sans nameNormalized ou emailNormalized
-        const contactsToUpdate = await Contact.find({
-            $or: [
-                { nameNormalized: { $exists: false } },
-                { emailNormalized: { $exists: false } }
-            ]
-        });
 
-        if (contactsToUpdate.length === 0) {
-            return res.json({
-                message: 'Tous les contacts sont déjà initialisés.',
-                updated: 0
-            });
-        }
-
-        console.log(`Initialisation de ${contactsToUpdate.length} contacts existants...`);
-
-        // Mettre à jour chaque contact
-        let updatedCount = 0;
-        for (const contact of contactsToUpdate) {
-            let updated = false;
-
-            if (contact.name && !contact.nameNormalized) {
-                contact.nameNormalized = deburr(contact.name).toLowerCase();
-                updated = true;
-            }
-
-            if (contact.email && !contact.emailNormalized) {
-                contact.emailNormalized = deburr(contact.email).toLowerCase();
-                updated = true;
-            }
-
-            if (updated) {
-                await contact.save();
-                updatedCount++;
-            }
-        }
-
-        console.log(`Initialisation terminée: ${updatedCount} contacts mis à jour`);
-
-        res.json({
-            message: `Initialisation terminée. ${updatedCount} contacts mis à jour.`,
-            updated: updatedCount
-        });
-    } catch (error) {
-        console.error('Erreur lors de l\'initialisation des contacts:', error);
-        res.status(500).json({ error: 'Erreur serveur lors de l\'initialisation des contacts' });
-    }
-});
 
 // Recherche avancée paginée sur nom, email ou téléphone (insensible aux accents/majuscules)
 router.get('/search', async (req: Request, res: Response) => {
@@ -115,7 +88,7 @@ router.get('/search', async (req: Request, res: Response) => {
         // Normalisation de la requête pour gérer les accents
         const normalizedQuery = deburr(q).toLowerCase();
 
-        // Recherche optimisée directement en MongoDB
+        // Recherche optimisée
         const searchQuery = {
             $or: [
                 { nameNormalized: { $regex: normalizedQuery, $options: 'i' } },
@@ -124,14 +97,14 @@ router.get('/search', async (req: Request, res: Response) => {
             ]
         };
 
-        // Requête optimisée : recherche, pagination et tri directement en MongoDB
+        // Recherche totale avec pagination et tri
         const [contacts, total] = await Promise.all([
             Contact.find(searchQuery)
-                .sort({ nameNormalized: 1 }) // Tri alphabétique par nom normalisé
-                .skip(skip) // Pagination
+                .sort({ nameNormalized: 1 }) // Tri alphabétique par nom
+                .skip(skip) // Saut de page 
                 .limit(limit) // Limite de contacts par page
-                .lean(), // Optimisation : retourne des objets JavaScript simples
-            Contact.countDocuments(searchQuery) // Compte total pour la pagination
+                .lean(), // Retourne des objets JavaScript simples
+            Contact.countDocuments(searchQuery) // Retourne le total pour la pagination
         ]);
 
         res.json({
@@ -151,10 +124,10 @@ router.post('/', async (req: Request, res: Response) => {
     try {
         const { email, phone } = req.body;
 
-        // Normalisation de l'email pour le contrôle d'unicité
+        // Gestion des accents
         const emailNormalized = deburr(email).toLowerCase();
 
-        // Vérification d'unicité optimisée avec email normalisé
+        // Vérification d'unicité avec email normalisé
         const exists = await Contact.findOne({
             $or: [
                 { emailNormalized },
@@ -175,7 +148,7 @@ router.post('/', async (req: Request, res: Response) => {
     }
 });
 
-// Import CSV : n'importe que les contacts valides et non existants (email/téléphone unique)
+// Import CSV : importation des contacts valides et non existants (email/téléphone unique)
 router.post('/import-csv', upload.single('file'), async (req: Request, res: Response) => {
     try {
         if (!req.file) {
@@ -183,15 +156,16 @@ router.post('/import-csv', upload.single('file'), async (req: Request, res: Resp
         }
 
         const results: any[] = [];
-        const bufferStream = new stream.PassThrough();
+        const bufferStream = new stream.PassThrough(); // Création d'un flux de données
         bufferStream.end(req.file.buffer);
 
+        // Lecture du fichier CSV
         bufferStream
             .pipe(csvParser({ separator: ';' }))
-            .on('data', (data) => results.push(data))
+            .on('data', (data: ICSVRow) => results.push(data))
             .on('end', async () => {
                 try {
-                    // Validation des données
+                    // Validation des données (email/téléphone valide, nom non vide)
                     const validContacts = results.filter(c =>
                         validateEmail(c.email) &&
                         validatePhone(c.phone) &&
@@ -219,8 +193,9 @@ router.post('/import-csv', upload.single('file'), async (req: Request, res: Resp
                         ]
                     }).lean();
 
-                    const existingEmailsNormalized = new Set(existing.map(c => c.emailNormalized));
-                    const existingPhones = new Set(existing.map(c => c.phone));
+
+                    const existingEmailsNormalized = new Set(existing.map((c: IExistingContact) => c.emailNormalized));
+                    const existingPhones = new Set(existing.map((c: IExistingContact) => c.phone));
 
                     // Filtrage des contacts non existants et ajout du champ nameNormalized
                     const toInsert = validContacts.filter(c => {
@@ -239,9 +214,10 @@ router.post('/import-csv', upload.single('file'), async (req: Request, res: Resp
                         });
                     }
 
-                    // Insertion en lot optimisée
+                    // Création des contacts en masse
                     await Contact.insertMany(toInsert);
 
+                    // Calcul du nombre de contacts ignorés
                     const ignored = results.length - toInsert.length;
                     res.json({
                         message: `${toInsert.length} contacts importés, ${ignored} ignorés (doublons ou invalides).`
@@ -257,7 +233,7 @@ router.post('/import-csv', upload.single('file'), async (req: Request, res: Resp
     }
 });
 
-// Export CSV : tous les contacts, séparateur ;, encodage UTF-8
+// Export CSV
 router.get('/export-csv', async (_req: Request, res: Response) => {
     try {
         // Récupération optimisée avec projection pour limiter les données
@@ -268,7 +244,7 @@ router.get('/export-csv', async (_req: Request, res: Response) => {
             avatar: 1
         }).lean();
 
-        // Génération du CSV sans BOM pour éviter les problèmes d'affichage
+        // Génération du CSV
         const csv = Papa.unparse(
             contacts.map((c: any) => ({
                 name: c.name || '',
@@ -294,15 +270,15 @@ router.get('/export-csv', async (_req: Request, res: Response) => {
     }
 });
 
-// Modification d'un contact avec contrôle d'unicité email/téléphone
+// Modification d'un contact
 router.put('/:id', async (req: Request, res: Response) => {
     try {
         const { email, phone } = req.body;
 
-        // Normalisation de l'email pour le contrôle d'unicité
+        // Normalisation de l'email
         const emailNormalized = deburr(email).toLowerCase();
 
-        // Vérification d'unicité optimisée avec email normalisé (exclut le contact actuel)
+        // Vérification d'unicité avec email normalisé
         const exists = await Contact.findOne({
             $or: [
                 { emailNormalized },
@@ -337,7 +313,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     }
 });
 
-// Suppression d'un contact par ID
+// Suppression d'un contact
 router.delete('/:id', async (req: Request, res: Response) => {
     try {
         const deleted = await Contact.findByIdAndDelete(req.params.id);

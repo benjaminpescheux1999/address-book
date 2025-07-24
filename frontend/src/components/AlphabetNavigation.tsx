@@ -1,12 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, useTheme, useMediaQuery } from '@mui/material';
-
-interface AlphabetNavigationProps {
-    onLetterClick: (letter: string) => void;
-    currentLetter?: string;
-}
-
-const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+import { AlphabetNavigationProps, ALPHABET } from '../types';
 
 export default function AlphabetNavigation({ onLetterClick, currentLetter }: AlphabetNavigationProps) {
     const theme = useTheme();
