@@ -1,8 +1,8 @@
-// Types pour les contacts et opérations associées
+import { Types } from 'mongoose';
 
 // Interface de base pour un contact
 export interface IContact {
-    _id?: string;
+    _id?: Types.ObjectId | string;
     name: string;
     nameNormalized?: string;
     email: string;
@@ -66,13 +66,14 @@ export interface ICSVRow {
     name: string;
     email: string;
     phone: string;
-    avatar?: string;
+    avatar?: string; // Base64 avec préfixe data:image ou chaîne vide
 }
 
 // Interface pour les contacts validés
 export interface IValidatedContact extends ICSVRow {
     nameNormalized: string;
     emailNormalized: string;
+    avatar: string; // Avatar validé (base64 valide ou chaîne vide)
 }
 
 // Interface pour les erreurs d'API
@@ -82,10 +83,22 @@ export interface IApiError {
 
 // Interface pour les contacts existants (pour vérification d'unicité)
 export interface IExistingContact {
-    _id: string;
+    _id: Types.ObjectId | string;
     emailNormalized: string;
     phone: string;
 }
+
+// Type pour les résultats Mongoose (plus flexible)
+export type MongooseContact = {
+    _id?: Types.ObjectId | string;
+    name?: string;
+    nameNormalized?: string;
+    email?: string;
+    emailNormalized?: string;
+    phone?: string;
+    avatar?: string;
+    [key: string]: any; // Pour les propriétés Mongoose supplémentaires
+};
 
 // Types pour les fonctions de validation
 export type ValidationFunction = (value: string) => boolean;

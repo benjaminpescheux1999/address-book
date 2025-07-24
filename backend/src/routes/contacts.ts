@@ -5,6 +5,7 @@ import csvParser from 'csv-parser';
 import Papa from 'papaparse';
 import multer from 'multer';
 import stream from 'stream';
+
 import {
     IContact,
     ICreateContact,
@@ -18,6 +19,7 @@ import {
     IValidatedContact,
     IApiError,
     IExistingContact,
+    MongooseContact,
     ValidationFunction,
     IValidationResult,
     IApiResponse,
@@ -40,6 +42,38 @@ const validatePhone: ValidationFunction = (phone: string): boolean => {
     return frenchPhoneRegex.test(cleanPhone);
 };
 
+// Vérification de chaîne base64
+const validateBase64: ValidationFunction = (str: string): boolean => {
+    if (!str || typeof str !== 'string') return false;
+
+    // Vérification du format base64
+    const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
+    if (!base64Regex.test(str)) return false;
+
+    try {
+        // Tentative de décodage pour vérifier la validité
+        return btoa(atob(str)) === str;
+    } catch {
+        return false;
+    }
+};
+
+// Vérification d'avatar (base64 avec préfixe data:image)
+const validateAvatar: ValidationFunction = (avatar: string): boolean => {
+    if (!avatar || typeof avatar !== 'string') return false;
+
+    // Vérification du format data:image 
+    const dataUrlRegex = /^data:image\/(jpeg|jpg|png|gif|webp|avif);base64,/;
+    if (!dataUrlRegex.test(avatar)) return false;
+
+    // Extraction de la partie base64
+    const base64Part = avatar.split(',')[1];
+    if (!base64Part) return false;
+
+    // Vérification de la partie base64
+    return validateBase64(base64Part);
+};
+
 // Récupère les contacts paginés et triés par nom (ordre alphabétique)
 router.get('/', async (req: Request, res: Response) => {
     try {
@@ -47,7 +81,7 @@ router.get('/', async (req: Request, res: Response) => {
         const limit: number = parseInt(String(req.query.limit || '5'), 10);
         const skip: number = (page - 1) * limit;
 
-        const [contacts, total]: [IContact[], number] = await Promise.all([
+        const [contacts, total] = await Promise.all([
             Contact.find()
                 .sort({ nameNormalized: 1 }) // Tri alphabétique par nom (ignore les accents)
                 .skip(skip) // Saut de page
@@ -56,8 +90,8 @@ router.get('/', async (req: Request, res: Response) => {
             Contact.countDocuments() // Retourne le total pour la pagination 
         ]);
 
-        const response: IPaginatedResponse<IContact> = {
-            data: contacts,
+        const response: IPaginatedResponse<MongooseContact> = {
+            data: contacts as MongooseContact[],
             total,
             page,
             limit
@@ -139,7 +173,13 @@ router.post('/', async (req: Request, res: Response) => {
             return res.status(409).json({ error: 'Email ou téléphone déjà utilisé.' });
         }
 
-        const newContact = new Contact(req.body);
+        // Validation de l'avatar si présent
+        const contactData = { ...req.body };
+        if (contactData.avatar && !validateAvatar(contactData.avatar)) {
+            contactData.avatar = '';
+        }
+
+        const newContact = new Contact(contactData);
         await newContact.save();
         res.status(201).json(newContact);
     } catch (error) {
@@ -162,7 +202,7 @@ router.post('/import-csv', upload.single('file'), async (req: Request, res: Resp
         // Lecture du fichier CSV
         bufferStream
             .pipe(csvParser({ separator: ';' }))
-            .on('data', (data: ICSVRow) => results.push(data))
+            .on('data', (data: ICSVRow) => results.push(data as ICSVRow))
             .on('end', async () => {
                 try {
                     // Validation des données (email/téléphone valide, nom non vide)
@@ -194,8 +234,8 @@ router.post('/import-csv', upload.single('file'), async (req: Request, res: Resp
                     }).lean();
 
 
-                    const existingEmailsNormalized = new Set(existing.map((c: IExistingContact) => c.emailNormalized));
-                    const existingPhones = new Set(existing.map((c: IExistingContact) => c.phone));
+                    const existingEmailsNormalized = new Set(existing.map((c: MongooseContact) => c.emailNormalized || ''));
+                    const existingPhones = new Set(existing.map((c: MongooseContact) => c.phone || ''));
 
                     // Filtrage des contacts non existants et ajout du champ nameNormalized
                     const toInsert = validContacts.filter(c => {
@@ -205,7 +245,8 @@ router.post('/import-csv', upload.single('file'), async (req: Request, res: Resp
                     }).map(c => ({
                         ...c,
                         nameNormalized: deburr(c.name).toLowerCase(),
-                        emailNormalized: deburr(c.email).toLowerCase()
+                        emailNormalized: deburr(c.email).toLowerCase(),
+                        avatar: validateAvatar(c.avatar) ? c.avatar : '' // Vérification de l'avatar
                     }));
 
                     if (toInsert.length === 0) {
@@ -246,11 +287,11 @@ router.get('/export-csv', async (_req: Request, res: Response) => {
 
         // Génération du CSV
         const csv = Papa.unparse(
-            contacts.map((c: any) => ({
+            contacts.map((c: MongooseContact) => ({
                 name: c.name || '',
                 email: c.email || '',
                 phone: c.phone || '',
-                avatar: c.avatar || ''
+                avatar: validateAvatar(c.avatar || '') ? c.avatar || '' : ''
             })),
             {
                 delimiter: ';',
@@ -291,14 +332,21 @@ router.put('/:id', async (req: Request, res: Response) => {
             return res.status(409).json({ error: 'Email ou téléphone déjà utilisé.' });
         }
 
+        // Validation de l'avatar si présent
+        const updateData: IUpdateContact = {
+            name: req.body.name,
+            email: req.body.email,
+            phone: req.body.phone,
+            avatar: req.body.avatar
+        };
+
+        if (updateData.avatar && !validateAvatar(updateData.avatar)) {
+            updateData.avatar = ''; // Retourne vide si invalide
+        }
+
         const updated = await Contact.findByIdAndUpdate(
             req.params.id,
-            {
-                name: req.body.name,
-                email: req.body.email,
-                phone: req.body.phone,
-                avatar: req.body.avatar || null
-            },
+            updateData,
             { new: true, runValidators: true }
         );
 
